@@ -1495,7 +1495,6 @@ static void FetchSpriteData(void)
 		for(n=63;n>=0;n--,spr++)
 		{
 			if((unsigned int)(scanline-spr->y)>=H) continue;
-			//printf("%d, %u\n",scanline,(unsigned int)(scanline-spr->y));
 			if(ns<maxsprites)
 			{
 				if(n==63) sb=1;
@@ -1536,7 +1535,7 @@ static void FetchSpriteData(void)
 					dst.x=spr->x;
 					dst.atr=spr->atr;
 
-					memcpy((void*)&(SPRBUF[ns<<2]), (void*)&dst, sizeof(int));					
+					memcpy((void*)&(SPRBUF[ns<<2]), (void*)&dst, sizeof(int));
 					//*(uint32 *)&(SPRBUF[ns<<2])=*(uint32 *)&dst;
 				}
 

@@ -25,7 +25,9 @@ static int noframe;
 
 static int s_paletterefresh;
 
-static unsigned char s_palette[256*3]; // colors..
+struct _S_PALETTE {
+	unsigned char r, g, b, dummy_byte;
+} s_palette[256];
 
 extern bool MaxSpeed;
 
@@ -63,8 +65,12 @@ RedoPalette()
 
 void BlitScreen(uint8 *XBuf, uint8 *scrBuf)
 {
-	int x,xx,idx,y,yy;
-	unsigned char * scrPtr, * palPtr;
+	int x,y;
+	unsigned int spixel1, spixel2, spixel3, spixel4;
+	
+	unsigned char * s_ptr;
+	unsigned int * pal_ptr;
+	unsigned int * d_ptr;
 
     // refresh the palette if required
     if(s_paletterefresh) {
@@ -72,25 +78,27 @@ void BlitScreen(uint8 *XBuf, uint8 *scrBuf)
         s_paletterefresh = 0;
     }
 	
-	// XXX soules - not entirely sure why this is being done yet
-    //XBuf += s_srendline * 256;
+	// Thanks to senquack for help speeding this up
 	
 	// Draw our X buffer to the screen buffer
-	scrPtr = &(scrBuf[96]);
-	for(y=0;y<s_tlines;++y)
-	{
-		for(x=0,xx=32; x < 256;x++,xx++)
-		{
-			palPtr = &(s_palette[(XBuf[y*256+x]*3)]);
-			*scrPtr++ = *palPtr++;
-			*scrPtr++ = *palPtr++;
-			*scrPtr++ = *palPtr;
-		}
-		scrPtr += 192;
-	}
+	s_ptr = XBuf;
+	d_ptr = (unsigned int*)&(scrBuf[96]);
+	pal_ptr = (unsigned int*)s_palette;
 	
-// Will probably have to break this into assembly for speed..
-//	Blit8ToHigh(XBuf + NOFFSET, mapped_mem, NWIDTH, s_tlines, 960, 1, 1);
+	for(y=s_tlines; y>0; --y)
+	{
+		for(x=64; x > 0; --x)
+		{
+			spixel1 = pal_ptr[*s_ptr++];	// Grab 4 pixels at a time
+			spixel2 = pal_ptr[*s_ptr++];
+			spixel3 = pal_ptr[*s_ptr++];
+			spixel4 = pal_ptr[*s_ptr++];
+			*d_ptr++ = spixel1 | (spixel2 << 24);			// Write 4 pixels in 3-byte per pixel format (24-bit)
+			*d_ptr++ = (spixel2>>8) | (spixel3 << 16);  	// [ 3 2 1 0 ] [ 3 2 1 0 ] [ 3 2 1 0 ] << actual bytes
+			*d_ptr++ = (spixel3 >> 16) | (spixel4 << 8);	// [ 3 3 3 2 ] [ 2 2 1 1 ] [ 1 0 0 0 ] << pixels filled
+		}
+		d_ptr += 48; // 64 pixels * 3 bytes per pixel = 192.. / 4 = 48 pixel offset
+	}
 }
 
 int InitVideo(FCEUGI *gi)
@@ -145,9 +153,9 @@ int InitVideo(FCEUGI *gi)
 void FCEUD_SetPalette(unsigned char index, unsigned char r, unsigned char g, unsigned char b)
 {
 	// Palette business
-	s_palette[index*3+2] = r;
-	s_palette[index*3+1] = g;
-	s_palette[index*3] = b;
+	s_palette[index].b = r;
+	s_palette[index].g = g;
+	s_palette[index].r = b;
 	    
 	s_paletterefresh = 1;
 }
@@ -157,9 +165,9 @@ void FCEUD_SetPalette(unsigned char index, unsigned char r, unsigned char g, uns
  */
 void FCEUD_GetPalette(unsigned char index, unsigned char *r, unsigned char *g, unsigned char *b)
 {
-    *r = s_palette[index*3+2];
-    *g = s_palette[index*3+1];
-    *b = s_palette[index*3];
+    *r = s_palette[index].b;
+    *g = s_palette[index].g;
+    *b = s_palette[index].r;
 }
 
 ///Currently unimplemented.

@@ -1,7 +1,7 @@
 CC  = arm-gph-linux-gnueabi-gcc.exe
 CXX = arm-gph-linux-gnueabi-g++.exe
 DEFS = -DGP2X -DCAANOO -DLSB_FIRST=1 -D__NO_STRING_INLINES -DHAVE_ASPRINTF
-CFLAGS += -Wall -Wno-write-strings -Wno-sign-compare -O5 -mcpu=arm926ej-s -mtune=arm926ej-s
+CFLAGS += -Wall -Wno-write-strings -Wno-sign-compare -O3 -mcpu=arm926ej-s -mtune=arm926ej-s -msoft-float
 CFLAGS += -fsigned-char -ffast-math -fomit-frame-pointer -fexpensive-optimizations -fno-strength-reduce 
 CAANOODEV = /cygdrive/c/Program Files (x86)/CAANOO/GPH_SDK
 LFLAGS = -L'$(CAANOODEV)/target/lib' -I'$(CAANOODEV)/include -DGP2X' -lz

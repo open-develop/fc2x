@@ -1186,7 +1186,7 @@ const char *GamePadNames[GAMEPAD_NUM_BUTTONS] =
 const char *DefaultGamePadDevice[GAMEPAD_NUM_DEVICES] =
     {"Joystick", "None", "None", "None"};
 const int DefaultGamePad[GAMEPAD_NUM_DEVICES][GAMEPAD_NUM_BUTTONS] =
-	{ { CAN_BTN_A, CAN_BTN_X, CAN_BTN_HELP2, CAN_BTN_HELP1,
+	{ { CAN_BTN_X, CAN_BTN_A, CAN_BTN_HELP2, CAN_BTN_HELP1,
 		CAN_BTN_UP, CAN_BTN_DOWN, CAN_BTN_LEFT, CAN_BTN_RIGHT, 16, 16 },
       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
       { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
