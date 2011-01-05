@@ -1,10 +1,12 @@
+AS = arm-gph-linux-gnueabi-as.exe
 CC  = arm-gph-linux-gnueabi-gcc.exe
 CXX = arm-gph-linux-gnueabi-g++.exe
 DEFS = -DGP2X -DCAANOO -DLSB_FIRST=1 -D__NO_STRING_INLINES -DHAVE_ASPRINTF
-CFLAGS += -Wall -Wno-write-strings -Wno-sign-compare -O3 -mcpu=arm926ej-s -mtune=arm926ej-s -msoft-float
-CFLAGS += -fsigned-char -ffast-math -fomit-frame-pointer -fexpensive-optimizations -fno-strength-reduce 
+CFLAGS = -Wall -Wno-write-strings -Wno-sign-compare -O3 -mcpu=arm926ej-s -mtune=arm926ej-s -msoft-float
+CFLAGS += -fsigned-char -ffast-math -fomit-frame-pointer -fexpensive-optimizations -fno-strength-reduce
+SFLAGS = -Wall -mcpu=arm926ej-s -fomit-frame-pointer
 CAANOODEV = /cygdrive/c/Program Files (x86)/CAANOO/GPH_SDK
-LFLAGS = -L'$(CAANOODEV)/target/lib' -I'$(CAANOODEV)/include -DGP2X' -lz
+LFLAGS = -L'$(CAANOODEV)/target/lib' -I'$(CAANOODEV)/include -DCAANOO' -lz
 TARGET = fc2x.gpe
 STRIP = arm-gph-linux-gnueabi-strip.exe
 SRC = ./source/
@@ -45,8 +47,8 @@ $(SRCMAPPER)229.o $(SRCMAPPER)230.o $(SRCMAPPER)231.o $(SRCMAPPER)232.o $(SRCMAP
 $(SRCMAPPER)244.o $(SRCMAPPER)246.o $(SRCMAPPER)255.o $(SRCMAPPER)emu2413.o $(SRCMAPPER)mmc2and4.o $(SRCMAPPER)simple.o \
 $(SRCUTILS)ConvertUTF.o $(SRCUTILS)crc32.o $(SRCUTILS)endian.o $(SRCUTILS)general.o $(SRCUTILS)guid.o \
 $(SRCUTILS)md5.o $(SRCUTILS)memory.o $(SRCUTILS)unzip.o $(SRCUTILS)xstring.o \
-$(SRC)asm.o $(SRC)cart.o $(SRC)cheat.o $(SRC)conddebug.cpp $(SRC)config.o $(SRC)debug.o $(SRC)drawing.o $(SRC)emufile.o $(SRC)fceu.o \
-$(SRC)fds.o $(SRC)file.o $(SRC)filter.o $(SRC)ines.o $(SRC)input.o $(SRC)movie.o $(SRC)netplay.o $(SRC)nsf.o \
+$(SRC)asm.o $(SRC)asmutils.o $(SRC)cart.o $(SRC)cheat.o $(SRC)conddebug.cpp $(SRC)config.o $(SRC)debug.o $(SRC)drawing.o $(SRC)emufile.o \
+$(SRC)fceu.o $(SRC)fds.o $(SRC)file.o $(SRC)filter.o $(SRC)ines.o $(SRC)input.o $(SRC)movie.o $(SRC)netplay.o $(SRC)nsf.o \
 $(SRC)oldmovie.o $(SRC)palette.o $(SRC)ppu.o $(SRC)sound.o $(SRC)state.o $(SRC)unif.o $(SRC)video.o $(SRC)vsuni.o \
 $(SRC)wave.o $(SRC)x6502.o \
 $(COM_DRV)args.o $(COM_DRV)cheat.o $(COM_DRV)config.o $(COM_DRV)configSys.o $(COM_DRV)hq2x.o $(COM_DRV)hq3x.o \
@@ -58,6 +60,9 @@ all : $(TARGET)
 
 $(TARGET):$(OBJS)
 	$(CXX) -o ./build/$(TARGET) $(OBJS) $(LFLAGS) && $(STRIP) ./build/$(TARGET)
+	
+.s.o:
+	$(CC) $(INCS) $(SFLAGS) $(DEFS) -c $< -o $@
 	
 .c.o:
 	$(CC) $(INCS) $(CFLAGS) $(DEFS) -c $< -o $@

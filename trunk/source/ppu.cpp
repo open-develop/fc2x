@@ -23,6 +23,10 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 
+#ifdef CAANOO
+#include  "asmutils.h"
+#endif
+
 #include  "types.h"
 #include  "x6502.h"
 #include  "fceu.h"
@@ -1375,7 +1379,9 @@ static void Fixit1(void)
 void MMC5_hb(int);     //Ugh ugh ugh.
 static void DoLine(void)
 {
+#ifndef CAANOO
 	int x;
+#endif
 	uint8 *target=XBuf+(scanline<<8);
 
 	if(MMC5Hack && (ScreenON || SpriteON)) MMC5_hb(scanline);
@@ -1398,6 +1404,29 @@ static void DoLine(void)
 	if(SpriteON)
 		CopySprites(target);
 
+	#ifdef CAANOO
+	
+	if(ScreenON || SpriteON)  // Yes, very el-cheapo.
+	{
+		if(PPU[1]&0x01)
+		{
+			block_and(target, 256, 0x30);
+		}	
+	}
+	
+	if((PPU[1]>>5)==0x7)
+	{
+		block_andor(target, 256, 0x3f, 0xc0);
+	}
+	else if (PPU[1]&0xE0)
+	{
+		block_or(target, 256, 0x40);
+	}
+	else
+		block_andor(target, 256, 0x3f, 0x80);
+	
+	#else
+		
 	if(ScreenON || SpriteON)  // Yes, very el-cheapo.
 	{
 		if(PPU[1]&0x01)
@@ -1417,7 +1446,8 @@ static void DoLine(void)
 	else
 		for(x=63;x>=0;x--)
 			*(uint32 *)&target[x<<2]=((*(uint32*)&target[x<<2])&0x3f3f3f3f)|0x80808080;
-
+	#endif
+			
 	sphitx=0x100;
 
 	if(ScreenON || SpriteON)
@@ -1462,11 +1492,11 @@ static void DoLine(void)
 
 typedef struct {
 	uint8 y,no,atr,x;
-} SPR;
+} SPR __attribute__((aligned(1)));;
 
 typedef struct {
 	uint8 ca[2],atr,x;
-} SPRB;
+} SPRB __attribute__((aligned(1)));;
 
 void FCEUI_DisableSpriteLimitation(int a)
 {
