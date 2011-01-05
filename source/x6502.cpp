@@ -410,12 +410,11 @@ void X6502_Power(void)
  X6502_Reset();
 }
 
-void X6502_Run(int32 cycles)
+void X6502_Run(int32 c)
 {
+  int32 cycles = c << 4; // 16*4 = 64
   if(PAL)
-   cycles*=15;    // 15*4=60
-  else
-   cycles*=16;    // 16*4=64
+    cycles -= c; // 15*4 = 64
 
   _count+=cycles;
 extern int test; test++;
