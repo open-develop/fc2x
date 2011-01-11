@@ -10,16 +10,15 @@ Create Date: 1/8/2011
 
 ***************************************************/
 
-.equ REG_A, r4
-.equ REG_X, r5
-.equ REG_Y, r6
-.equ REG_PC, r7
-.equ REG_S, r8
-.equ REG_P_REST, r8
-.equ REG_NZ, r9
-.equ REG_ADDR, r10
-.equ REG_COUNT, r11
-.equ REG_OP_TABLE r12
+REG_A .req r4
+REG_X .req r5
+REG_Y .req r6
+REG_PC .req r7
+REG_S .req r8
+REG_P .req r9
+REG_DB .req r10
+REG_COUNT .req r11
+REG_OP_TABLE .req r12
 
 .equ N_FLAG,  0x80
 .equ V_FLAG,  0x40
@@ -31,7 +30,7 @@ Create Date: 1/8/2011
 .equ C_FLAG,  0x01
 
 .equ FCEU_IQRESET,  0x020
-.equ FCEU_IQNMI2,  	0x040  // Delayed NMI, gets converted to *_IQNMI
+.equ FCEU_IQNMI2,  	0x040   /* Delayed NMI, gets converted to *_IQNMI */
 .equ FCEU_IQNMI,  	0x080
 .equ FCEU_IQDPCM,   0x100
 .equ FCEU_IQFCOUNT, 0x200
@@ -41,6 +40,18 @@ Create Date: 1/8/2011
 .align 4
 
 .macro ADDCYC X
+	ldr r3, =timestamp
+	ldr r2, =tcount
+	ldr r1, [r3]
+	mov r0, #(\X)
+	add r1, r1, r0
+	str r1, [r3]
+	ldr r1, [r2]
+	add r1, r1, r0
+	str r1, [r2]
+	mov r1, #48
+	mul r0, r0, r1
+	sub REG_COUNT, REG_COUNT, r0
 .endm
 
 .macro RdMem A
@@ -49,16 +60,20 @@ Create Date: 1/8/2011
 .macro WrMem A, V
 .endm
 
-.macro RdRam A
+.macro RdRAM A
 .endm
 
-.macro WrRam A, V
+.macro WrRAM A, V
 .endm
 
 .macro PUSH V
+	WrRAM(#0x100+REG_S,\V)
+	sub REG_S, REG_S, #1
 .endm
 
 .macro POP
+	add REG_S, REG_S, #1
+	RdRAM(#0x100+REG_S)
 .endm
 
 .macro X_ZN zort
@@ -70,25 +85,42 @@ Create Date: 1/8/2011
 .macro JN cond
 .endm
 
-.macro LDA
+.macro LDA x
+	mov REG_A, \x
+	X_ZN(REG_A)
 .endm
 
-.macro LDX
+.macro LDX x
+	mov REG_X, \x
+	X_ZN(REG_X)
 .endm
 
-.macro LDY
+.macro LDY x
+	mov REG_Y, \x
+	X_ZN(REG_Y)
 .endm
 
-.macro AND
+.macro LDA_LDX x
+	LDA(\x)
+	LDX(\x)
+.endm
+
+.macro AND x
+	and REG_A, REG_A, \x
+	X_ZN(REG_A)
 .endm
 
 .macro BIT
 .endm
 
-.macro EOR
+.macro EOR x
+	eor REG_A, REG_A, \x
+	X_ZN(REG_A)
 .endm
 
-.macro ORA
+.macro ORA x
+	orr REG_A, REG_A, \x
+	X_ZN(REG_A)
 .endm
 
 .macro ADC
@@ -103,34 +135,193 @@ Create Date: 1/8/2011
 .macro AXS
 .endm
 
-.macro CMP
+.macro CMP x
+	CMPL(REG_A, \x)
 .endm
 
-.macro CPX
+.macro CPX x
+	CMPL(REG_X, \x)
 .endm
 
-.macro CPY
+.macro CPY x
+	CMPL(REG_Y, \x)
 .endm
 
-.macro DEC
+.macro DEC x
+	sub \x, \x, #1
+	X_ZN(\x)
 .endm
 
-.macro INC
+.macro DEC_CMP
+.endm
+
+.macro INC x
+	add \x, \x, #1
+	X_ZN(\x)
+.endm
+
+.macro INC_SBC
+.endm
+
+.macro ASL
+.endm
+
+.macro ASL_ORA
+.endm
+
+.macro LSR
+.endm
+
+.macro LSR_EOR
+.endm
+
+.macro LSRA
+.endm
+
+.macro ROL
+.endm
+
+.macro ROL_AND
+.endm
+
+.macro ROR
+.endm
+
+.macro ROR_ADC
+.endm
+
+.macro GetAB target
+.endm
+
+.macro GetABIRD target, i
+.endm
+
+.macro GetABIWR target, i
+.endm
+
+.macro GetZP target
+.endm
+
+.macro GetZPI target, i
+.endm
+
+.macro GetIX target
+.endm
+
+.macro GetIYRD target
+.endm
+
+.macro GetIYWR target
+.endm
+
+.macro RMW_A op
+.endm
+
+.macro RMW_AB op
+.endm
+
+.macro RMW_ABI op
+.endm
+
+.macro RMW_ABX op
+.endm
+
+.macro RMW_ABY op
+.endm
+
+.macro RMW_IX op
+.endm
+
+.macro RMW_IY op
+.endm
+
+.macro RMW_ZP op
+.endm
+
+.macro RMW_ZPX op
+.endm
+
+.macro LD_IM op
+.endm
+
+.macro LD_ZP op
+.endm
+
+.macro LD_ZPX op
+.endm
+
+.macro LD_ZPY op
+.endm
+
+.macro LD_AB op
+.endm
+
+.macro LD_AB_NOP
+.endm
+
+.macro LD_ABI reg, op
+.endm
+
+.macro LD_ABX op
+.endm
+
+.macro LD_ABX_NOP
+.endm
+
+.macro LD_ABY op
+.endm
+
+.macro LD_IX op
+.endm
+
+.macro LD_IY op
+.endm
+
+.macro ST_ZP r
+.endm
+
+.macro ST_ZPX r
+.endm
+
+.macro ST_ZPY r
+.endm
+
+.macro ST_AB r
+.endm
+
+.macro ST_ABI reg, r
+.endm
+
+.macro ST_ABX r
+.endm
+
+.macro ST_ABY r
+.endm
+
+.macro ST_IX r
+.endm
+
+.macro ST_IY r
 .endm
 
 op00:	/* BRK */
+		add REG_PC, REG_PC, #1
+		PUSH(REG_PC>>8)
+		PUSH(REG_PC)
 	
 op40:	/* RTI */
 
 op60:	/* RTS */
 
 op48:	/* PHA */
+		PUSH(REG_A)
 
 op08:	/* PHP */
 
 op68:	/* PLA */
 
 op28:	/* PLP*/
+		POP
 
 op4C:	/* JMP ABSOLUTE */
 
@@ -139,24 +330,43 @@ op6C:	/* JMP SPECIFIC */
 op20:	/* JSR */
 
 opAA:	/* TAX */
+		mov REG_X, REG_A
+		X_ZN(REG_A)
 
 op8A:	/* TXA */
+		mov REG_A, REG_X
+		X_ZN(REG_A)
 
 opA8:	/* TAY */
+		mov REG_Y, REG_A
+		X_ZN(REG_A)
 
 op98:	/* TYA */
+		mov REG_A, REG_Y
+		X_ZN(REG_A)
 
 opBA:	/* TSX */
+		mov REG_X, REG_S
+		X_ZN(REG_X)
 
 op9A:	/* TXS */
+		mov REG_S, REG_X
 
 opCA:	/* DEX */
+		sub REG_X, REG_X, #1
+		X_ZN(REG_X)
 
 op88:	/* DEY */
+		sub REG_Y, REG_Y, #1
+		X_ZN(REG_Y)
 
 opE8:	/* INX */
+		add REG_X, REG_X, #1
+		X_ZN(REG_X)
 
 opC8:	/* INY */
+		add REG_Y, REG_Y, #1
+		X_ZN(REG_Y)
 
 op18:	/* CLC */
 
@@ -367,40 +577,40 @@ opAB:	/* ATX */
 opCB:	/* AXS */
 
 /* DCP */
-opC7: RMW_ZP(DEC;CMP);
-opD7: RMW_ZPX(DEC;CMP);
-opCF: RMW_AB(DEC;CMP);
-opDF: RMW_ABX(DEC;CMP);
-opDB: RMW_ABY(DEC;CMP);
-opC3: RMW_IX(DEC;CMP);
-opD3: RMW_IY(DEC;CMP);
+opC7: RMW_ZP(DEC_CMP);
+opD7: RMW_ZPX(DEC_CMP);
+opCF: RMW_AB(DEC_CMP);
+opDF: RMW_ABX(DEC_CMP);
+opDB: RMW_ABY(DEC_CMP);
+opC3: RMW_IX(DEC_CMP);
+opD3: RMW_IY(DEC_CMP);
 
 /* ISB */
-opE7: RMW_ZP(INC;SBC);
-opF7: RMW_ZPX(INC;SBC);
-opEF: RMW_AB(INC;SBC);
-opFF: RMW_ABX(INC;SBC);
-opFB: RMW_ABY(INC;SBC);
-opE3: RMW_IX(INC;SBC);
-opF3: RMW_IY(INC;SBC);
+opE7: RMW_ZP(INC_SBC);
+opF7: RMW_ZPX(INC_SBC);
+opEF: RMW_AB(INC_SBC);
+opFF: RMW_ABX(INC_SBC);
+opFB: RMW_ABY(INC_SBC);
+opE3: RMW_IX(INC_SBC);
+opF3: RMW_IY(INC_SBC);
 
 /* DOP */
 
-op04: _PC++;break;
-op14: _PC++;break;
-op34: _PC++;break;
-op44: _PC++;break;
-op54: _PC++;break;
-op64: _PC++;break;
-op74: _PC++;break;
+op04: add REG_PC, REG_PC, #1
+op14: add REG_PC, REG_PC, #1
+op34: add REG_PC, REG_PC, #1
+op44: add REG_PC, REG_PC, #1
+op54: add REG_PC, REG_PC, #1
+op64: add REG_PC, REG_PC, #1
+op74: add REG_PC, REG_PC, #1
 
-op80: _PC++;break;
-op82: _PC++;break;
-op89: _PC++;break;
-opC2: _PC++;break;
-opD4: _PC++;break;
-opE2: _PC++;break;
-opF4: _PC++;break;
+op80: add REG_PC, REG_PC, #1
+op82: add REG_PC, REG_PC, #1
+op89: add REG_PC, REG_PC, #1
+opC2: add REG_PC, REG_PC, #1
+opD4: add REG_PC, REG_PC, #1
+opE2: add REG_PC, REG_PC, #1
+opF4: add REG_PC, REG_PC, #1
 
 /* KIL */
 op02:
@@ -415,16 +625,21 @@ op92:
 opB2:
 opD2:
 opF2:
+	ADDCYC(0xFF)
+	ldr r1, =jammed
+	mov r0, #1
+	str r0, [r1]
+	sub REG_PC, REG_PC, #1
 
 opBB:	/* LAR */
 
 /* LAX */
-opA7: LD_ZP(LDA;LDX);
-opB7: LD_ZPY(LDA;LDX);
-opAF: LD_AB(LDA;LDX);
-opBF: LD_ABY(LDA;LDX);
-opA3: LD_IX(LDA;LDX);
-opB3: LD_IY(LDA;LDX);
+opA7: LD_ZP(LDA_LDX);
+opB7: LD_ZPY(LDA_LDX);
+opAF: LD_AB(LDA_LDX);
+opBF: LD_ABY(LDA_LDX);
+opA3: LD_IX(LDA_LDX);
+opB3: LD_IY(LDA_LDX);
 
 /* NOP */
 op1A:
@@ -435,66 +650,76 @@ opDA:
 opFA:
 
 /* RLA */
-op27: RMW_ZP(ROL;AND);
-op37: RMW_ZPX(ROL;AND);
-op2F: RMW_AB(ROL;AND);
-op3F: RMW_ABX(ROL;AND);
-op3B: RMW_ABY(ROL;AND);
-op23: RMW_IX(ROL;AND);
-op33: RMW_IY(ROL;AND);
+op27: RMW_ZP(ROL_AND);
+op37: RMW_ZPX(ROL_AND);
+op2F: RMW_AB(ROL_AND);
+op3F: RMW_ABX(ROL_AND);
+op3B: RMW_ABY(ROL_AND);
+op23: RMW_IX(ROL_AND);
+op33: RMW_IY(ROL_AND);
 
 /* RRA */
-op67: RMW_ZP(ROR;ADC);
-op77: RMW_ZPX(ROR;ADC);
-op6F: RMW_AB(ROR;ADC);
-op7F: RMW_ABX(ROR;ADC);
-op7B: RMW_ABY(ROR;ADC);
-op63: RMW_IX(ROR;ADC);
-op73: RMW_IY(ROR;ADC);
+op67: RMW_ZP(ROR_ADC);
+op77: RMW_ZPX(ROR_ADC);
+op6F: RMW_AB(ROR_ADC);
+op7F: RMW_ABX(ROR_ADC);
+op7B: RMW_ABY(ROR_ADC);
+op63: RMW_IX(ROR_ADC);
+op73: RMW_IY(ROR_ADC);
 
 /* SLO */
-op07: RMW_ZP(ASL;ORA);
-op17: RMW_ZPX(ASL;ORA);
-op0F: RMW_AB(ASL;ORA);
-op1F: RMW_ABX(ASL;ORA);
-op1B: RMW_ABY(ASL;ORA);
-op03: RMW_IX(ASL;ORA);
-op13: RMW_IY(ASL;ORA);
+op07: RMW_ZP(ASL_ORA);
+op17: RMW_ZPX(ASL_ORA);
+op0F: RMW_AB(ASL_ORA);
+op1F: RMW_ABX(ASL_ORA);
+op1B: RMW_ABY(ASL_ORA);
+op03: RMW_IX(ASL_ORA);
+op13: RMW_IY(ASL_ORA);
 
 /* SRE */
-op47: RMW_ZP(LSR;EOR);
-op57: RMW_ZPX(LSR;EOR);
-op4F: RMW_AB(LSR;EOR);
-op5F: RMW_ABX(LSR;EOR);
-op5B: RMW_ABY(LSR;EOR);
-op43: RMW_IX(LSR;EOR);
-op53: RMW_IY(LSR;EOR);
+op47: RMW_ZP(LSR_EOR);
+op57: RMW_ZPX(LSR_EOR);
+op4F: RMW_AB(LSR_EOR);
+op5F: RMW_ABX(LSR_EOR);
+op5B: RMW_ABY(LSR_EOR);
+op43: RMW_IX(LSR_EOR);
+op53: RMW_IY(LSR_EOR);
 
 /* AXA - SHA */
-op93: ST_IY(_A&_X&(((A-_Y)>>8)+1));
-op9F: ST_ABY(_A&_X&(((A-_Y)>>8)+1));
+op93: /*ST_IY(REG_A&REG_X&(((REG_A-REG_Y)>>8)+1));*/
+op9F: /*ST_ABY(REG_A&REG_X&(((REG_A-REG_Y)>>8)+1));*/
 
 /* SYA */
-op9C: ST_ABX(_Y&(((A-_X)>>8)+1));
+op9C: /*ST_ABX(REG_Y&(((REG_A-_X)>>8)+1));*/
 
 /* SXA */
-op9E: ST_ABY(_X&(((A-_Y)>>8)+1));
+op9E: /*ST_ABY(REG_X&(((REG_A-REG_Y)>>8)+1));*/
 
 /* XAS */
-op9B: _S=_A&_X;ST_ABY(_S& (((A-_Y)>>8)+1) );
+op9B: 
+	/*and		REG_S, REG_A, REG_X
+	ST_ABY(REG_S& (((REG_A-REG_Y)>>8)+1))*/
 
 /* TOP */
-op0C: LD_AB(;);
+op0C: LD_AB_NOP
+
 op1C: 
 op3C: 
 op5C: 
 op7C: 
 opDC: 
-opFC: LD_ABX(;);
+opFC: LD_ABX_NOP
 
 /* XAA - BIG QUESTION MARK HERE */
 op8B:
 
+/* Pass in count argument (r0?) */
+X6502_Run_a:
+	stmfd   sp!, {r4-r5}
+
+X6502_Init_a:
+	
+	
 /* Interface with our C/C++ code
 	Note: This code MUST be in an extern "C" loop in order to link
 	with C++ properly.. */
@@ -519,58 +744,76 @@ op8B:
 .globl X6502_IRQEnd_a @ (int w);
 
 CycTable:
-	.byte 7,6,2,8,3,3,5,5,3,2,2,2,4,4,6,6,
-	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	.byte 6,6,2,8,3,3,5,5,4,2,2,2,4,4,6,6,
-	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	.byte 6,6,2,8,3,3,5,5,3,2,2,2,3,4,6,6,
-	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	.byte 6,6,2,8,3,3,5,5,4,2,2,2,5,4,6,6,
-	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	.byte 2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,
-	.byte 2,6,2,6,4,4,4,4,2,5,2,5,5,5,5,5,
-	.byte 2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4,
-	.byte 2,5,2,5,4,4,4,4,2,4,2,4,4,4,4,4,
-	.byte 2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6,
-	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7,
-	.byte 2,6,3,8,3,3,5,5,2,2,2,2,4,4,6,6,
+	.byte 7,6,2,8,3,3,5,5,3,2,2,2,4,4,6,6
+	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7
+	.byte 6,6,2,8,3,3,5,5,4,2,2,2,4,4,6,6
+	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7
+	.byte 6,6,2,8,3,3,5,5,3,2,2,2,3,4,6,6
+	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7
+	.byte 6,6,2,8,3,3,5,5,4,2,2,2,5,4,6,6
+	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7
+	.byte 2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4
+	.byte 2,6,2,6,4,4,4,4,2,5,2,5,5,5,5,5
+	.byte 2,6,2,6,3,3,3,3,2,2,2,2,4,4,4,4
+	.byte 2,5,2,5,4,4,4,4,2,4,2,4,4,4,4,4
+	.byte 2,6,2,8,3,3,5,5,2,2,2,2,4,4,6,6
+	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7
+	.byte 2,6,3,8,3,3,5,5,2,2,2,2,4,4,6,6
 	.byte 2,5,2,8,4,4,6,6,2,4,2,7,4,4,7,7
 	
 opsize:
-	.byte 1,2,0,0,0,2,2,0,1,2,1,0,0,3,3,0,
-	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0,
-	.byte 3,2,0,0,2,2,2,0,1,2,1,0,3,3,3,0,
-	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0,
-	.byte 1,2,0,0,0,2,2,0,1,2,1,0,3,3,3,0,
-	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0,
-	.byte 1,2,0,0,0,2,2,0,1,2,1,0,3,3,3,0,
-	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0,
-	.byte 0,2,0,0,2,2,2,0,1,0,1,0,3,3,3,0,
-	.byte 2,2,0,0,2,2,2,0,1,3,1,0,0,3,0,0,
-	.byte 2,2,2,0,2,2,2,0,1,2,1,0,3,3,3,0,
-	.byte 2,2,0,0,2,2,2,0,1,3,1,0,3,3,3,0,
-	.byte 2,2,0,0,2,2,2,0,1,2,1,0,3,3,3,0,
-	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0,
-	.byte 2,2,0,0,2,2,2,0,1,2,1,0,3,3,3,0,
+	.byte 1,2,0,0,0,2,2,0,1,2,1,0,0,3,3,0
+	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0
+	.byte 3,2,0,0,2,2,2,0,1,2,1,0,3,3,3,0
+	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0
+	.byte 1,2,0,0,0,2,2,0,1,2,1,0,3,3,3,0
+	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0
+	.byte 1,2,0,0,0,2,2,0,1,2,1,0,3,3,3,0
+	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0
+	.byte 0,2,0,0,2,2,2,0,1,0,1,0,3,3,3,0
+	.byte 2,2,0,0,2,2,2,0,1,3,1,0,0,3,0,0
+	.byte 2,2,2,0,2,2,2,0,1,2,1,0,3,3,3,0
+	.byte 2,2,0,0,2,2,2,0,1,3,1,0,3,3,3,0
+	.byte 2,2,0,0,2,2,2,0,1,2,1,0,3,3,3,0
+	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0
+	.byte 2,2,0,0,2,2,2,0,1,2,1,0,3,3,3,0
 	.byte 2,2,0,0,0,2,2,0,1,3,0,0,0,3,3,0
 	
 optype:
-	.byte 0,1,0,0,0,2,2,0,0,0,0,0,0,3,3,0,
-	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0,
-	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0,
-	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0,
-	.byte 0,1,0,0,0,2,2,0,0,0,0,0,0,3,3,0,
-	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0,
-	.byte 0,1,0,0,0,2,2,0,0,0,0,0,3,3,3,0,
-	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0,
-	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0,
-	.byte 0,4,0,0,5,5,8,0,0,6,0,0,0,7,0,0,
-	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0,
-	.byte 0,4,0,0,5,5,8,0,0,6,0,0,7,7,6,0,
-	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0,
-	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0,
-	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0,
+	.byte 0,1,0,0,0,2,2,0,0,0,0,0,0,3,3,0
 	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0
+	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0
+	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0
+	.byte 0,1,0,0,0,2,2,0,0,0,0,0,0,3,3,0
+	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0
+	.byte 0,1,0,0,0,2,2,0,0,0,0,0,3,3,3,0
+	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0
+	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0
+	.byte 0,4,0,0,5,5,8,0,0,6,0,0,0,7,0,0
+	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0
+	.byte 0,4,0,0,5,5,8,0,0,6,0,0,7,7,6,0
+	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0
+	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0
+	.byte 0,1,0,0,2,2,2,0,0,0,0,0,3,3,3,0
+	.byte 0,4,0,0,0,5,5,0,0,6,0,0,0,7,7,0
+
+ZNTable:
+	.byte Z_FLAG,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	.byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    .byte 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
+	.byte N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG,N_FLAG
 	
 /* 0x10 ints to pass data between C++ and ASM */
 nes_registers:
@@ -582,6 +825,10 @@ tcount:
 	
 /* Trigger for IRQ Low (compatibility with FCEUX) */
 IRQlow:
+	.long	0
+	
+/* Temporary _P it seems... */
+mooPI:
 	.long	0
 	
 jammed:
