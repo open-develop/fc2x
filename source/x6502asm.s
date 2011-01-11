@@ -43,14 +43,14 @@ REG_OP_TABLE .req r12
 	ldr r3, =timestamp
 	ldr r2, =tcount
 	ldr r1, [r3]
-	mov r0, #(\X)
+	mov r0, #\X
 	add r1, r1, r0
 	str r1, [r3]
 	ldr r1, [r2]
 	add r1, r1, r0
 	str r1, [r2]
 	mov r1, #48
-	mul r0, r0, r1
+	mul r0, r1, r0
 	sub REG_COUNT, REG_COUNT, r0
 .endm
 
@@ -76,10 +76,24 @@ REG_OP_TABLE .req r12
 	RdRAM(#0x100+REG_S)
 .endm
 
+/* _P&=~(Z_FLAG|N_FLAG);_P|=ZNTable[zort] */
 .macro X_ZN zort
+	mov r1, #Z_FLAG
+	orr r1, r1, #N_FLAG 
+	mvn r2, r1
+	ands REG_P, REG_P, r2
+	ldr r1, =ZNTable
+	add r1, r1, \zort
+	ldr r2, [r1]
+	orr REG_P, REG_P, r2
 .endm
 
+/* _P|=ZNTable[zort] */
 .macro X_ZNT zort
+	ldr r1, =ZNTable
+	add r1, r1, \zort
+	ldr r2, [r1]
+	orr REG_P, REG_P, r2
 .endm
 
 .macro JN cond
@@ -87,40 +101,49 @@ REG_OP_TABLE .req r12
 
 .macro LDA x
 	mov REG_A, \x
-	X_ZN(REG_A)
+	X_ZN REG_A
 .endm
 
 .macro LDX x
 	mov REG_X, \x
-	X_ZN(REG_X)
+	X_ZN REG_X
 .endm
 
 .macro LDY x
 	mov REG_Y, \x
-	X_ZN(REG_Y)
+	X_ZN REG_Y
 .endm
 
 .macro LDA_LDX x
-	LDA(\x)
-	LDX(\x)
+	LDA \x
+	LDX \x
 .endm
 
 .macro AND x
 	and REG_A, REG_A, \x
-	X_ZN(REG_A)
+	X_ZN REG_A
 .endm
 
-.macro BIT
+.macro BIT x
+	and REG_P, REG_P, ~(Z_FLAG|V_FLAG|N_FLAG)
+	mov r1, \x
+	and r1, r1, REG_A
+	ldr r2, =ZNTable
+	orr REG_P, REG_P, [r2,r1]
+	and REG_P, REG_P, Z_FLAG
+	mov r1, \x
+	and r1, r1, (V_FLAG|N_VLAG)
+	orr REG_P, r1
 .endm
 
 .macro EOR x
 	eor REG_A, REG_A, \x
-	X_ZN(REG_A)
+	X_ZN REG_A
 .endm
 
 .macro ORA x
 	orr REG_A, REG_A, \x
-	X_ZN(REG_A)
+	X_ZN REG_A
 .endm
 
 .macro ADC
@@ -129,27 +152,42 @@ REG_OP_TABLE .req r12
 .macro SBC
 .endm
 
+/* t=a1-a2; X_ZN(t&0xFF); _P&=~C_FLAG; _P|=((t>>8)&C_FLAG)^C_FLAG; */
 .macro CMPL a1, a2
+	mov r1, \a1
+	sub r1, r1, \a2
+	and r2, r1, #0xFF
+	X_ZN r2
+	mvn r2, C_FLAG
+	and REG_P, REG_P, r2
+	orr REG_P, ((r1>>8)&C_FLAG)^C_FLAG
 .endm
 
-.macro AXS
+.macro AXS x
+	mov r1, REG_A
+	and r1, r1, REG_X
+	subs r1, r1, \x
+	X_ZN(r1&0xFF)
+	and REG_P, ~C_FLAG
+	orr REG_P, ((r1>>8)&C_FLAG)^C_FLAG
+	mov REG_X, r1
 .endm
 
 .macro CMP x
-	CMPL(REG_A, \x)
+	CMPL REG_A,\x
 .endm
 
 .macro CPX x
-	CMPL(REG_X, \x)
+	CMPL REG_X,\x
 .endm
 
 .macro CPY x
-	CMPL(REG_Y, \x)
+	CMPL REG_Y,\x
 .endm
 
 .macro DEC x
 	sub \x, \x, #1
-	X_ZN(\x)
+	X_ZN \x
 .endm
 
 .macro DEC_CMP
@@ -157,13 +195,20 @@ REG_OP_TABLE .req r12
 
 .macro INC x
 	add \x, \x, #1
-	X_ZN(\x)
+	X_ZN \x
 .endm
 
-.macro INC_SBC
+.macro INC_SBC x
+	INC \x
+	SBC \x
 .endm
 
-.macro ASL
+.macro ASL x
+	mvn r1, #C_FLAG
+	ands REG_P, REG_P, r1
+	orr REG_P, REG_P, \x>>7
+	mov \x, \x>>1
+	X_ZNT \x
 .endm
 
 .macro ASL_ORA
@@ -306,8 +351,8 @@ REG_OP_TABLE .req r12
 
 op00:	/* BRK */
 		add REG_PC, REG_PC, #1
-		PUSH(REG_PC>>8)
-		PUSH(REG_PC)
+		PUSH (REG_PC>>8)
+		PUSH REG_PC
 	
 op40:	/* RTI */
 
@@ -331,42 +376,42 @@ op20:	/* JSR */
 
 opAA:	/* TAX */
 		mov REG_X, REG_A
-		X_ZN(REG_A)
+		X_ZN REG_A
 
 op8A:	/* TXA */
 		mov REG_A, REG_X
-		X_ZN(REG_A)
+		X_ZN REG_A
 
 opA8:	/* TAY */
 		mov REG_Y, REG_A
-		X_ZN(REG_A)
+		X_ZN REG_A
 
 op98:	/* TYA */
 		mov REG_A, REG_Y
-		X_ZN(REG_A)
+		X_ZN REG_A
 
 opBA:	/* TSX */
 		mov REG_X, REG_S
-		X_ZN(REG_X)
+		X_ZN REG_X
 
 op9A:	/* TXS */
 		mov REG_S, REG_X
 
 opCA:	/* DEX */
 		sub REG_X, REG_X, #1
-		X_ZN(REG_X)
+		X_ZN REG_X
 
 op88:	/* DEY */
 		sub REG_Y, REG_Y, #1
-		X_ZN(REG_Y)
+		X_ZN REG_Y
 
 opE8:	/* INX */
 		add REG_X, REG_X, #1
-		X_ZN(REG_X)
+		X_ZN REG_X
 
 opC8:	/* INY */
 		add REG_Y, REG_Y, #1
-		X_ZN(REG_Y)
+		X_ZN REG_Y
 
 op18:	/* CLC */
 
@@ -524,23 +569,23 @@ opE1: LD_IX(SBC);
 opF1: LD_IY(SBC);
 
 /* STA */
-op85: ST_ZP(_A);
-op95: ST_ZPX(_A);
-op8D: ST_AB(_A);
-op9D: ST_ABX(_A);
-op99: ST_ABY(_A);
-op81: ST_IX(_A);
-op91: ST_IY(_A);
+op85: ST_ZP(REG_A);
+op95: ST_ZPX(REG_A);
+op8D: ST_AB(REG_A);
+op9D: ST_ABX(REG_A);
+op99: ST_ABY(REG_A);
+op81: ST_IX(REG_A);
+op91: ST_IY(REG_A);
 
 /* STX */
-op86: ST_ZP(_X);
-op96: ST_ZPY(_X);
-op8E: ST_AB(_X);
+op86: ST_ZP(REG_X);
+op96: ST_ZPY(REG_X);
+op8E: ST_AB(REG_X);
 
 /* STY */
-op84: ST_ZP(_Y);
-op94: ST_ZPX(_Y);
-op8C: ST_AB(_Y);
+op84: ST_ZP(REG_Y);
+op94: ST_ZPX(REG_Y);
+op8C: ST_AB(REG_Y);
 
 op90:	/* BCC */
 
@@ -563,10 +608,10 @@ op2B:
 op0B:	/* AAC */
 
 /* AAX */
-op87: ST_ZP(_A&_X);
-op97: ST_ZPY(_A&_X);
-op8F: ST_AB(_A&_X);
-op83: ST_IX(_A&_X);
+op87: ST_ZP(REG_A&REG_X);
+op97: ST_ZPY(REG_A&REG_X);
+op8F: ST_AB(REG_A&REG_X);
+op83: ST_IX(REG_A&REG_X);
 
 op6B:	/* ARR! */
 
@@ -690,7 +735,7 @@ op93: /*ST_IY(REG_A&REG_X&(((REG_A-REG_Y)>>8)+1));*/
 op9F: /*ST_ABY(REG_A&REG_X&(((REG_A-REG_Y)>>8)+1));*/
 
 /* SYA */
-op9C: /*ST_ABX(REG_Y&(((REG_A-_X)>>8)+1));*/
+op9C: /*ST_ABX(REG_Y&(((REG_A-REG_X)>>8)+1));*/
 
 /* SXA */
 op9E: /*ST_ABY(REG_X&(((REG_A-REG_Y)>>8)+1));*/
@@ -717,8 +762,20 @@ op8B:
 X6502_Run_a:
 	stmfd   sp!, {r4-r5}
 
-X6502_Init_a:
+X6502_Power_a:
+	mov r1, #0
+	mov REG_A, r1
+	mov REG_X, r1
+	mov REG_Y, r1
+	mov REG_PC, r1
+	mov REG_S, r1
+	mov REG_P, r1
+	mov REG_DB, r1
+	mov REG_COUNT, r1
+	mov REG_OP_TABLE, r1
 	
+X6502_Reset_a:
+	stmfd r13!,{r4-r11,lr}
 	
 /* Interface with our C/C++ code
 	Note: This code MUST be in an extern "C" loop in order to link
@@ -731,7 +788,6 @@ X6502_Init_a:
 .globl nes_registers @ pass between C and ASM
 
 .globl X6502_Run_a @ (int c);
-.globl X6502_Init_a @ (void);
 .globl X6502_Reset_a @ (void);
 .globl X6502_Power_a @ (void);
 .globl TriggerNMI_a @ (void);
@@ -830,6 +886,7 @@ IRQlow:
 /* Temporary _P it seems... */
 mooPI:
 	.long	0
-	
+
+/* Jammed is part of the 6502 */	
 jammed:
 	.long	0
